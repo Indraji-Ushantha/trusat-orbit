@@ -38,11 +38,13 @@ sys.path.insert(1, '../python-sgp4')
 # from skyfield.iokit import Loader, download, parse_tle
 # from skyfield import sgp4lib
 
-try:
-    from sgp4.cpropagation import sgp4, sgp4init
-except ImportError as e:
-    print(e)
-    from sgp4.propagation import sgp4, sgp4init
+# try:
+#     from sgp4.cpropagation import sgp4, sgp4init
+# except ImportError as e:
+#     print(e)
+#     from sgp4.propagation import sgp4, sgp4init
+from sgp4.propagation import sgp4, sgp4init
+
 from sgp4.ext import invjday, days2mdhms
 from sgp4.io import twoline2rv
 from sgp4.model import Satellite
@@ -467,6 +469,12 @@ def unit_vector(v):
     return u
 
 
+def unit_vector_vec(v):
+    """ Returns the unit vectors of the vector time series.  """
+    u = np.apply_along_axis(unit_vector, 0, v)
+    return u
+
+
 def delta_t(sat,t):
     tsince = (t - sat.jdsatepoch) * 1440.0 # time since epoch in minutes
 
@@ -479,6 +487,22 @@ def delta_t(sat,t):
     sat.vv = np.asarray(vv) / (sat.radiusearthkm / 60.0)  # In Earth radii / min - seriously!
 
     return sat
+
+
+def delta_t_vec(sat,t):
+    """ Perform propagation for a vector of jd time values
+    Assume we're working with numpy array output from sgp4 
+    Note we're changing to return r,v instead of sat
+    """
+
+    tsince = (t - sat.jdsatepoch) * 1440.0 # time since epoch in minutes
+
+    (sat.rr_km, sat.vv_kmpersec) = sgp4(sat,tsince) 
+
+    sat.rr = sat.rr_km / sat.radiusearthkm # In Earth radii
+    sat.vv = sat.vv_kmpersec / (sat.radiusearthkm / 60.0)  # In Earth radii / min - seriously!
+
+    return sat.rr, sat.vv
 
 
 def delta_el(sat, xincl=False, xnodeo=False,   eo=False, omegao=False, xmo=False,      xno=False,   bsr=False, 
@@ -584,6 +608,12 @@ def acose(x):
     else:
         rval = acos(x)
     return rval
+
+
+def acose_vec(x):
+    rval = np.where ( x >= 1, 0, np.where(x <= -1, pi, np.arccos(x)))
+    return rval
+
 
 # // read site data, from file
 def read_site(line):
@@ -931,7 +961,7 @@ def sort(iod_line, odata, ll, rd):
     return [iod_line, odata, ll, rd]
 
 # TODO: This function (and those it calls) will benefit the best from accelerating
-def find_rms(satx, rd, ll, odata):
+def find_rms_scalar(satx, rd, ll, odata):
     """ find rms of observations against propagated TLE position
 
     Inputs:
@@ -956,13 +986,45 @@ def find_rms(satx, rd, ll, odata):
 
         # convert to unit vector
         # delr = delr/nrr
-        delr = unit_vector(satx.rr - rd[j])
+        temp = satx.rr - rd[j]
+        delr = unit_vector(temp)
         # topocentric position error in degrees
         Perr = ( acose( np.dot(delr, ll[j]) ) )/de2ra
 
         # sum position error in squared degrees
         zum += Perr*Perr
     return sqrt(zum / nobs)
+
+
+def find_rms_vector(satx, rd, ll, odata):
+    """ find rms of observations against propagated TLE position
+
+    Inputs:
+        sat     Class variable of satellite elements
+        odata       Observation data (numpy array)
+        ll          Line of site vectors (numpy array)
+        rd          Topocentric vectors (numpy array)
+
+    Output:
+        rms     RMS of observations against predict
+    """
+    # advance satellite position
+    (rrvec, _) = delta_t_vec(satx,odata[:,0])
+
+    # predicted topocentric range (sat xyz - observer xyz)
+    temp1 = rrvec - np.transpose(rd)
+    delr = unit_vector_vec(temp1)
+
+    temp2 = np.einsum('ij,ij->i',np.transpose(delr),ll)
+    # topocentric position error in degrees
+    Perr = acose_vec( temp2 ) / de2ra
+
+    # sum position error in squared degrees
+    rms = np.sqrt(Perr.dot(Perr)/Perr.size)
+
+    return rms
+
+find_rms = find_rms_vector
 
 # Version of print_fit intended to be non-interactive and store fit to variables
 # New TruSat development in this version, to preserve original functionality of print_fit
@@ -3567,6 +3629,7 @@ def object_search(db=False,startDate=False,object=False):
         [iod_line, odata, ll, rd] = sort(iod_line, odata, ll, rd)
 
     nobs = len(IODs)
+    # sum = find_rms(sat, rd, ll, odata) # Establish baseline rms for global
     sum = find_rms(sat, rd, ll, odata) # Establish baseline rms for global
     print("\n{} Observations Found".format(nobs))
     print("\nStarting rms{:12.5f}".format(sum))
