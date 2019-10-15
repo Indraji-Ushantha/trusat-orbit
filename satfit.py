@@ -38,12 +38,12 @@ sys.path.insert(1, '../python-sgp4')
 # from skyfield.iokit import Loader, download, parse_tle
 # from skyfield import sgp4lib
 
-# try:
-#     from sgp4.cpropagation import sgp4, sgp4init
-# except ImportError as e:
-#     print(e)
-#     from sgp4.propagation import sgp4, sgp4init
-from sgp4.propagation import sgp4, sgp4init
+try:
+    from sgp4.cpropagation import sgp4, sgp4init
+except ImportError as e:
+    print(e)
+    from sgp4.propagation import sgp4, sgp4init
+# from sgp4.propagation import sgp4, sgp4init
 
 from sgp4.ext import invjday, days2mdhms
 from sgp4.io import twoline2rv
@@ -498,11 +498,13 @@ def delta_t_vec(sat,t):
     tsince = (t - sat.jdsatepoch) * 1440.0 # time since epoch in minutes
 
     (sat.rr_km, sat.vv_kmpersec) = sgp4(sat,tsince) 
-
-    sat.rr = sat.rr_km / sat.radiusearthkm # In Earth radii
-    sat.vv = sat.vv_kmpersec / (sat.radiusearthkm / 60.0)  # In Earth radii / min - seriously!
-
-    return sat.rr, sat.vv
+    if (sat.error):
+        print(sat.error_message)
+        return (False, False)
+    else:
+        sat.rr = sat.rr_km / sat.radiusearthkm # In Earth radii
+        sat.vv = sat.vv_kmpersec / (sat.radiusearthkm / 60.0)  # In Earth radii / min - seriously!
+        return sat.rr, sat.vv
 
 
 def delta_el(sat, xincl=False, xnodeo=False,   eo=False, omegao=False, xmo=False,      xno=False,   bsr=False, 

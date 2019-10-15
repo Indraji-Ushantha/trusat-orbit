@@ -123,3 +123,4 @@ satid.py
 sf.py
 satfit.pyx-old
 satfit.html
+*.profile
