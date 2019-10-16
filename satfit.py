@@ -38,12 +38,12 @@ sys.path.insert(1, '../python-sgp4')
 # from skyfield.iokit import Loader, download, parse_tle
 # from skyfield import sgp4lib
 
-try:
-    from sgp4.cpropagation import sgp4_scalar, sgp4_vector, sgp4init
-except ImportError as e:
-    print(e)
-    from sgp4.propagation import sgp4_scalar, sgp4_vector, sgp4init
-# from sgp4.propagation import sgp4_scalar, sgp4_vector, sgp4init
+# try:
+#     from sgp4.cpropagation import sgp4_scalar, sgp4_vector, sgp4init
+# except ImportError as e:
+#     print(e)
+#     from sgp4.propagation import sgp4_scalar, sgp4_vector, sgp4init
+from sgp4.propagation import sgp4_scalar, sgp4_vector, sgp4init
 
 from sgp4.ext import invjday, days2mdhms
 from sgp4.io import twoline2rv
@@ -475,7 +475,7 @@ def unit_vector_vec(v):
     return u
 
 
-def delta_t(sat,t):
+def delta_t_scalar(sat,t):
     tsince = (t - sat.jdsatepoch) * 1440.0 # time since epoch in minutes
 
     (rr, vv) = sgp4_scalar(sat,np.array([tsince])) 
@@ -489,7 +489,7 @@ def delta_t(sat,t):
     return sat
 
 
-def delta_t_vec(sat,t):
+def delta_t_vector(sat,t):
     """ Perform propagation for a vector of jd time values
     Assume we're working with numpy array output from sgp4 
     Note we're changing to return r,v instead of sat
@@ -506,6 +506,7 @@ def delta_t_vec(sat,t):
         sat.vv = sat.vv_kmpersec / (sat.radiusearthkm / 60.0)  # In Earth radii / min - seriously!
         return sat.rr, sat.vv
 
+delta_t = delta_t_vector
 
 def delta_el(sat, xincl=False, xnodeo=False,   eo=False, omegao=False, xmo=False,      xno=False,   bsr=False, 
                   inclo=False,  nodeo=False, ecco=False,  argpo=False,  mo=False, no_kozai=False,
@@ -1011,7 +1012,7 @@ def find_rms_vector(satx, rd, ll, odata):
         rms     RMS of observations against predict
     """
     # advance satellite position
-    (rrvec, _) = delta_t_vec(satx,odata[:,0])
+    (rrvec, _) = delta_t_vector(satx,odata[:,0])
 
     # predicted topocentric range (sat xyz - observer xyz)
     temp1 = rrvec - np.transpose(rd)

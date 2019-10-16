@@ -23,7 +23,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-from skyfield.api import Topos, load
+# from skyfield.api import Topos, load
 
 # The following 5 lines are necessary until our modules are public
 import inspect

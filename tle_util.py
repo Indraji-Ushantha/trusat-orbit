@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 from getpass import getpass
 
 from spacetrack import SpaceTrackClient
-from skyfield.api import load
+# from skyfield.api import load
 #from sgp4.ext import jday # Use our own for now
 
 # Global variables
