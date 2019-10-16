@@ -39,11 +39,11 @@ sys.path.insert(1, '../python-sgp4')
 # from skyfield import sgp4lib
 
 try:
-    from sgp4.cpropagation import sgp4, sgp4init
+    from sgp4.cpropagation import sgp4_scalar, sgp4_vector, sgp4init
 except ImportError as e:
     print(e)
-    from sgp4.propagation import sgp4, sgp4init
-# from sgp4.propagation import sgp4, sgp4init
+    from sgp4.propagation import sgp4_scalar, sgp4_vector, sgp4init
+# from sgp4.propagation import sgp4_scalar, sgp4_vector, sgp4init
 
 from sgp4.ext import invjday, days2mdhms
 from sgp4.io import twoline2rv
@@ -478,7 +478,7 @@ def unit_vector_vec(v):
 def delta_t(sat,t):
     tsince = (t - sat.jdsatepoch) * 1440.0 # time since epoch in minutes
 
-    (rr, vv) = sgp4(sat,tsince) 
+    (rr, vv) = sgp4_scalar(sat,np.array([tsince])) 
 
     sat.rr_km = rr
     sat.vv_kmpersec = vv
@@ -497,7 +497,7 @@ def delta_t_vec(sat,t):
 
     tsince = (t - sat.jdsatepoch) * 1440.0 # time since epoch in minutes
 
-    (sat.rr_km, sat.vv_kmpersec) = sgp4(sat,tsince) 
+    (sat.rr_km, sat.vv_kmpersec) = sgp4_vector(sat,tsince) 
     if (sat.error):
         print(sat.error_message)
         return (False, False)
@@ -1027,6 +1027,7 @@ def find_rms_vector(satx, rd, ll, odata):
     return rms
 
 find_rms = find_rms_vector
+# find_rms = find_rms_scalar
 
 # Version of print_fit intended to be non-interactive and store fit to variables
 # New TruSat development in this version, to preserve original functionality of print_fit
